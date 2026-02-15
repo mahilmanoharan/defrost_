@@ -11,7 +11,7 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		81AE05C52F41682400779AA3 /* Exceptions for "defrost" folder in "defrost" target */ = {
+		81AE05CC2F41699F00779AA3 /* Exceptions for "defrost" folder in "defrost" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
@@ -24,7 +24,7 @@
 		A491389C2F410F3D00A79648 /* defrost */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				81AE05C52F41682400779AA3 /* Exceptions for "defrost" folder in "defrost" target */,
+				81AE05CC2F41699F00779AA3 /* Exceptions for "defrost" folder in "defrost" target */,
 			);
 			path = defrost;
 			sourceTree = "<group>";
@@ -264,8 +264,11 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = Z9RW7967Y5;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "DEFROST uses your location to provide real-time safety alerts and document incidents.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "DEFROST requires your location to document incident reports accurately.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -295,8 +298,11 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = Z9RW7967Y5;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "DEFROST uses your location to provide real-time safety alerts and document incidents.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "DEFROST requires your location to document incident reports accurately.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

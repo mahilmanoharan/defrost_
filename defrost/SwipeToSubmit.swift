@@ -26,16 +26,6 @@ struct SwipeToSubmit: View {
     
     var body: some View {
         ZStack(alignment: .bottom) {
-            // Track Background
-            Rectangle()
-                .fill(obsidian)
-                .frame(width: 80, height: trackHeight)
-                .overlay(
-                    Rectangle()
-                        .stroke(steel, lineWidth: 0.5)
-                )
-                .cornerRadius(0)
-            
             // Progress Indicator Fill (Red Trail)
             VStack {
                 Spacer()

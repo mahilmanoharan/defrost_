@@ -10,6 +10,7 @@ struct DashboardView: View {
     @State private var showRedBackground: Bool = false
     @State private var redBackgroundHeight: CGFloat = 0
     @State private var selectedReport: Report?
+    @State private var showHelp: Bool = false
     
     // Mock user location (NYC area)
     private let userLocation = CLLocation(latitude: 40.7128, longitude: -74.0060)
@@ -78,6 +79,9 @@ struct DashboardView: View {
         .sheet(item: $selectedReport) { report in
             ReportDetailView(report: report)
         }
+        .sheet(isPresented: $showHelp) {
+            HelpView()
+        }
         .overlay(
             // Full red background after submission - comes from bottom up
             VStack {
@@ -101,10 +105,37 @@ struct DashboardView: View {
     // MARK: - Header Component
     private var headerView: some View {
         VStack(spacing: 8) {
-            Text("DEFROST_")
-                .font(.system(size: 24, weight: .bold, design: .monospaced))
-                .foregroundColor(boneWhite)
-                .tracking(2)
+            ZStack {
+                // Centered title
+                Text("DEFROST_")
+                    .font(.system(size: 24, weight: .bold, design: .monospaced))
+                    .foregroundColor(boneWhite)
+                    .tracking(2)
+                
+                // Help button aligned to trailing edge
+                HStack {
+                    Spacer()
+                    
+                    Button(action: {
+                        showHelp = true
+                    }) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "questionmark.circle.fill")
+                                .font(.system(size: 16))
+                            Text("HELP")
+                                .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        }
+                        .foregroundColor(crimson)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .overlay(
+                            Rectangle()
+                                .stroke(crimson, lineWidth: 0.5)
+                        )
+                    }
+                }
+                .padding(.horizontal, 16)
+            }
             
             HStack(spacing: 6) {
                 Circle()
