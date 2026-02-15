@@ -11,7 +11,7 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		81AE05C52F41682400779AA3 /* Exceptions for "defrost" folder in "defrost" target */ = {
+		A49138F12F417E0800A79648 /* Exceptions for "defrost" folder in "defrost" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
@@ -24,7 +24,7 @@
 		A491389C2F410F3D00A79648 /* defrost */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				81AE05C52F41682400779AA3 /* Exceptions for "defrost" folder in "defrost" target */,
+				A49138F12F417E0800A79648 /* Exceptions for "defrost" folder in "defrost" target */,
 			);
 			path = defrost;
 			sourceTree = "<group>";
