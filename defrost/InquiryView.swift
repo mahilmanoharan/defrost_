@@ -62,7 +62,7 @@ struct InquiryView: View {
                 
                 HStack {
                     Spacer()
-                    SwipeToSubmit()
+                    SwipeToSubmit(onCommit:{dismiss()})
                     Spacer()
                 }
                 .padding(.bottom, 32)

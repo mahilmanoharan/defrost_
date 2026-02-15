@@ -6,6 +6,7 @@ struct SwipeToSubmit: View {
     @State private var dragOffset: CGFloat = 0
     @State private var isCompleted: Bool = false
     
+    var onCommit: () -> Void = {}
     // MARK: - Interaction Constants
     private let swipeThreshold: CGFloat = -200
     private let trackHeight: CGFloat = 240
@@ -108,8 +109,14 @@ struct SwipeToSubmit: View {
         // Check if threshold was reached
         if dragOffset <= swipeThreshold {
             // Successful submission
+            
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                onCommit()
+            }
+            
             notificationGenerator.notificationOccurred(.success)
             print("TRANSMISSION_INITIATED")
+            
             
             // Reset with animation
             withAnimation(Animation.easeIn(duration: 0.3)) {

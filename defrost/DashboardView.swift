@@ -43,8 +43,7 @@ struct DashboardView: View {
             }
         }
         .fullScreenCover(isPresented: $showInquiry) {
-            // Navigation stub placeholder
-            placeholderInquiryView
+            InquiryView()
         }
     }
     
@@ -133,7 +132,7 @@ struct DashboardView: View {
                     Rectangle()
                         .stroke(crimson, lineWidth: 0.5)
                 )
-                .cornerRadius(0)
+                .cornerRadius(12)
         }
         .padding(.horizontal, 16)
         .padding(.bottom, 32)
