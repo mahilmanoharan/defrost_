@@ -5,6 +5,7 @@ import SwiftUI
 struct SwipeToSubmit: View {
     @State private var dragOffset: CGFloat = 0
     @State private var isCompleted: Bool = false
+    @State private var fillEntireScreen: Bool = false
     
     var onCommit: () -> Void = {}
     // MARK: - Interaction Constants
@@ -35,15 +36,24 @@ struct SwipeToSubmit: View {
                 )
                 .cornerRadius(0)
             
-            // Progress Indicator Fill
-            Rectangle()
-                .fill(crimson.opacity(progressOpacity))
-                .frame(width: 365, height: max(0, abs(dragOffset)))
-                .cornerRadius(0)
+            // Progress Indicator Fill (Red Trail)
+            VStack {
+                Spacer()
+                Rectangle()
+                    .fill(crimson)
+                    .frame(
+                        width: fillEntireScreen ? UIScreen.main.bounds.width : UIScreen.main.bounds.width, 
+                        height: fillEntireScreen ? UIScreen.main.bounds.height : max(0, abs(dragOffset))
+                    )
+                    .animation(.easeOut(duration: 0.4), value: fillEntireScreen)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .allowsHitTesting(false)
             
             // Swipeable Handle
             swipeHandle
                 .offset(y: dragOffset)
+                .opacity(fillEntireScreen ? 0 : 1)
                 .gesture(
                     DragGesture()
                         .onChanged { value in
@@ -71,7 +81,7 @@ struct SwipeToSubmit: View {
                     .foregroundColor(boneWhite)
             }
             
-            Text("SWIPE")
+            Text("SUBMIT")
                 .font(.system(size: 13, weight: .bold, design: .monospaced))
                 .foregroundColor(boneWhite)
         }
@@ -108,24 +118,25 @@ struct SwipeToSubmit: View {
     private func handleDragEnded() {
         // Check if threshold was reached
         if dragOffset <= swipeThreshold {
-            // Successful submission
-            
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                onCommit()
-            }
-            
+            // Successful submission - continue upward smoothly
             notificationGenerator.notificationOccurred(.success)
             print("TRANSMISSION_INITIATED")
             
-            
-            // Reset with animation
-            withAnimation(Animation.easeIn(duration: 0.3)) {
-                dragOffset = 0
+            // Continue handle movement upward from current position
+            withAnimation(.easeOut(duration: 0.4)) {
+                dragOffset = -UIScreen.main.bounds.height
             }
-            isCompleted = false
+            
+            // Fill entire screen with red
+            withAnimation(.easeOut(duration: 0.5)) {
+                fillEntireScreen = true
+            }
+            
+            // Call onCommit immediately to trigger red background
+            onCommit()
         } else {
             // Failed attempt - snap back
-            withAnimation(Animation.easeIn(duration: 0.2)) {
+            withAnimation(Animation.easeOut(duration: 0.25)) {
                 dragOffset = 0
             }
             isCompleted = false

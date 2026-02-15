@@ -1,13 +1,24 @@
 import SwiftUI
+import PhotosUI
+import CoreLocation
 
 /// DEFROST Inquiry View - Terminal-Style Submission Interface
 /// Report input shell with Urban Noir 2.0 terminal aesthetic
 struct InquiryView: View {
-    @State private var encounterType: String = ""
-    @State private var coordinateOverride: String = ""
-    @State private var timestamp: String = ""
+    // Report fields
+    @State private var threatType: String = ""
+    @State private var locationName: String = ""
+    @State private var description: String = ""
+    @State private var selectedImage: PhotosPickerItem?
+    @State private var imageData: Data?
+    
+    // Location
+    @StateObject private var locationManager = LocationManager()
     
     @Environment(\.dismiss) private var dismiss
+    
+    // Callback for when submission is complete
+    var onSubmit: () -> Void
     
     // MARK: - Color Palette (No-Vibe Protocol)
     private let obsidian = Color(hex: "#080808")
@@ -27,26 +38,194 @@ struct InquiryView: View {
                 // MARK: - Terminal Input Fields
                 ScrollView {
                     VStack(alignment: .leading, spacing: 24) {
-                        // Encounter Type Field
+                        // Threat Type Picker
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("[THREAT_TYPE]")
+                                .font(.system(size: 11, weight: .bold, design: .monospaced))
+                                .foregroundColor(steel)
+                                .tracking(1)
+                            
+                            HStack(spacing: 8) {
+                                ForEach(["CHECKPOINT", "PATROL", "RAID"], id: \.self) { type in
+                                    Button(action: {
+                                        threatType = type
+                                    }) {
+                                        Text(type)
+                                            .font(.system(size: 10, weight: .bold, design: .monospaced))
+                                            .foregroundColor(threatType == type ? obsidian : boneWhite)
+                                            .padding(.horizontal, 12)
+                                            .padding(.vertical, 8)
+                                            .background(threatType == type ? boneWhite : Color.clear)
+                                            .overlay(
+                                                Rectangle()
+                                                    .stroke(threatType == type ? boneWhite : steel, lineWidth: 0.5)
+                                            )
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // Location Name Field
                         terminalInputField(
-                            label: "[ENCOUNTER_TYPE]",
-                            placeholder: "TYPE_CLASSIFICATION",
-                            text: $encounterType
+                            label: "[LOCATION_NAME]",
+                            placeholder: "AREA_DESCRIPTION",
+                            text: $locationName
                         )
                         
-                        // Coordinate Override Field
-                        terminalInputField(
-                            label: "[COORDINATE_OVERRIDE]",
-                            placeholder: "LAT_LONG_MANUAL",
-                            text: $coordinateOverride
-                        )
+                        // Auto-detected Location Display
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("[GPS_COORDINATES]")
+                                .font(.system(size: 11, weight: .bold, design: .monospaced))
+                                .foregroundColor(steel)
+                                .tracking(1)
+                            
+                            HStack(spacing: 8) {
+                                if locationManager.isAuthorized {
+                                    if let location = locationManager.location {
+                                        VStack(alignment: .leading, spacing: 4) {
+                                            HStack(spacing: 6) {
+                                                Image(systemName: "location.fill")
+                                                    .font(.system(size: 12))
+                                                    .foregroundColor(crimson)
+                                                
+                                                Text("LAT: \(String(format: "%.4f", location.coordinate.latitude))")
+                                                    .font(.system(size: 12, design: .monospaced))
+                                                    .foregroundColor(boneWhite)
+                                            }
+                                            
+                                            HStack(spacing: 6) {
+                                                Image(systemName: "location.fill")
+                                                    .font(.system(size: 12))
+                                                    .foregroundColor(crimson)
+                                                
+                                                Text("LON: \(String(format: "%.4f", location.coordinate.longitude))")
+                                                    .font(.system(size: 12, design: .monospaced))
+                                                    .foregroundColor(boneWhite)
+                                            }
+                                        }
+                                    } else {
+                                        HStack(spacing: 6) {
+                                            ProgressView()
+                                                .tint(crimson)
+                                            
+                                            Text("ACQUIRING_LOCATION...")
+                                                .font(.system(size: 12, design: .monospaced))
+                                                .foregroundColor(steel)
+                                        }
+                                    }
+                                } else {
+                                    VStack(alignment: .leading, spacing: 8) {
+                                        HStack(spacing: 6) {
+                                            Image(systemName: "exclamationmark.triangle.fill")
+                                                .font(.system(size: 12))
+                                                .foregroundColor(crimson)
+                                            
+                                            Text("LOCATION_ACCESS_REQUIRED")
+                                                .font(.system(size: 12, design: .monospaced))
+                                                .foregroundColor(crimson)
+                                        }
+                                        
+                                        Button(action: {
+                                            locationManager.requestLocation()
+                                        }) {
+                                            HStack {
+                                                Image(systemName: "location.circle.fill")
+                                                    .font(.system(size: 14))
+                                                
+                                                Text("ENABLE_LOCATION")
+                                                    .font(.system(size: 11, weight: .bold, design: .monospaced))
+                                            }
+                                            .foregroundColor(obsidian)
+                                            .padding(.horizontal, 12)
+                                            .padding(.vertical, 6)
+                                            .background(crimson)
+                                            .overlay(
+                                                Rectangle()
+                                                    .stroke(crimson, lineWidth: 0.5)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                            .padding(12)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(obsidian)
+                            .overlay(
+                                Rectangle()
+                                    .stroke(steel, lineWidth: 0.5)
+                            )
+                        }
                         
-                        // Timestamp Field
-                        terminalInputField(
-                            label: "[TIMESTAMP]",
-                            placeholder: "YYYY.MM.DD_HH:MM:SS",
-                            text: $timestamp
-                        )
+                        // Description Field (Multi-line)
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("[DESCRIPTION]")
+                                .font(.system(size: 11, weight: .bold, design: .monospaced))
+                                .foregroundColor(steel)
+                                .tracking(1)
+                            
+                            TextEditor(text: $description)
+                                .font(.system(size: 14, design: .monospaced))
+                                .foregroundColor(boneWhite)
+                                .scrollContentBackground(.hidden)
+                                .frame(height: 120)
+                                .padding(12)
+                                .background(obsidian)
+                                .overlay(
+                                    Rectangle()
+                                        .stroke(steel, lineWidth: 0.5)
+                                )
+                        }
+                        
+                        // Image Upload
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("[PHOTO_EVIDENCE]")
+                                .font(.system(size: 11, weight: .bold, design: .monospaced))
+                                .foregroundColor(steel)
+                                .tracking(1)
+                            
+                            PhotosPicker(selection: $selectedImage, matching: .images) {
+                                HStack {
+                                    Image(systemName: imageData != nil ? "photo.fill" : "photo")
+                                        .font(.system(size: 20))
+                                        .foregroundColor(steel)
+                                    
+                                    Text(imageData != nil ? "IMAGE_SELECTED" : "ATTACH_IMAGE")
+                                        .font(.system(size: 12, weight: .bold, design: .monospaced))
+                                        .foregroundColor(boneWhite)
+                                    
+                                    Spacer()
+                                    
+                                    Image(systemName: "chevron.right")
+                                        .font(.system(size: 12))
+                                        .foregroundColor(steel)
+                                }
+                                .padding(12)
+                                .background(obsidian)
+                                .overlay(
+                                    Rectangle()
+                                        .stroke(steel, lineWidth: 0.5)
+                                )
+                            }
+                            .onChange(of: selectedImage) { _, newValue in
+                                Task {
+                                    if let data = try? await newValue?.loadTransferable(type: Data.self) {
+                                        imageData = data
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // Auto-timestamp info
+                        HStack(spacing: 6) {
+                            Image(systemName: "clock")
+                                .font(.system(size: 10))
+                                .foregroundColor(steel)
+                            
+                            Text("TIMESTAMP_AUTO_GENERATED")
+                                .font(.system(size: 10, design: .monospaced))
+                                .foregroundColor(steel.opacity(0.7))
+                        }
+                        .padding(.top, 8)
                     }
                     .padding(.horizontal, 16)
                     .padding(.top, 24)
@@ -62,11 +241,17 @@ struct InquiryView: View {
                 
                 HStack {
                     Spacer()
-                    SwipeToSubmit(onCommit:{dismiss()})
+                    SwipeToSubmit(onCommit: {
+                        dismiss()
+                        onSubmit()
+                    })
                     Spacer()
                 }
                 .padding(.bottom, 32)
             }
+        }
+        .onAppear {
+            locationManager.requestLocation()
         }
     }
     
@@ -109,7 +294,8 @@ struct InquiryView: View {
     private func terminalInputField(
         label: String,
         placeholder: String,
-        text: Binding<String>
+        text: Binding<String>,
+        keyboardType: UIKeyboardType = .default
     ) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             // Field Label
@@ -127,6 +313,7 @@ struct InquiryView: View {
             .foregroundColor(boneWhite)
             .textInputAutocapitalization(.characters)
             .autocorrectionDisabled(true)
+            .keyboardType(keyboardType)
             .padding(12)
             .background(obsidian)
             .overlay(
@@ -165,5 +352,7 @@ struct InquiryView: View {
 
 // MARK: - Preview
 #Preview {
-    InquiryView()
+    InquiryView(onSubmit: {
+        print("Report submitted")
+    })
 }
