@@ -1,10 +1,10 @@
 import Foundation
 import CoreLocation
 import UserNotifications
+import Combine
 
 /// DEFROST Notification Manager - Location-Based Alert System
 /// Monitors new reports and triggers notifications when threats are nearby
-@MainActor
 class NotificationManager: NSObject, ObservableObject {
     static let shared = NotificationManager()
     
@@ -29,33 +29,96 @@ class NotificationManager: NSObject, ObservableObject {
         locationManager.delegate = self
         locationManager.desiredAccuracy = kCLLocationAccuracyBest
         locationManager.distanceFilter = 100 // Update every 100 meters
+        
+        // Set notification delegate to show notifications even when app is in foreground
+        notificationCenter.delegate = self
+        print("🔔 NotificationManager initialized with foreground notification support")
     }
     
     // MARK: - Request Permissions
     
     /// Request both notification and location permissions
+    @MainActor
     func requestPermissions() {
         // Request notification permission
-        notificationCenter.requestAuthorization(options: [.alert, .sound, .badge]) { granted, error in
-            if granted {
-                print("🔔 Notification permission granted")
-            } else if let error = error {
+        Task {
+            do {
+                let granted = try await notificationCenter.requestAuthorization(options: [.alert, .sound, .badge])
+                if granted {
+                    print("🔔 Notification permission granted")
+                } else {
+                    print("⚠️ Notification permission denied")
+                }
+            } catch {
                 print("❌ Notification permission error: \(error.localizedDescription)")
             }
         }
         
-        // Request location permission
+        // Request location permission - ALWAYS (for background tracking)
         let status = locationManager.authorizationStatus
         
         switch status {
         case .notDetermined:
-            locationManager.requestAlwaysAuthorization() // For background updates
-        case .authorizedAlways, .authorizedWhenInUse:
+            print("📍 Requesting 'Always' location permission for background tracking...")
+            locationManager.requestAlwaysAuthorization() // Changed from requestWhenInUseAuthorization
+        case .authorizedAlways:
+            print("✅ 'Always' location permission already granted")
+            configureBackgroundTracking()
+            startLocationUpdates()
+        case .authorizedWhenInUse:
+            print("⚠️ WARNING: Only 'When In Use' permission granted!")
+            print("⚠️ Background notifications will NOT work when screen is locked.")
+            print("⚠️ Go to Settings → Privacy → Location Services → defrost → Change to 'Always'")
             startLocationUpdates()
         case .denied, .restricted:
-            print("❌ Location permission denied")
+            print("❌ Location permission denied or restricted")
         @unknown default:
             break
+        }
+    }
+    
+    // MARK: - Background Location Configuration
+    
+    /// Configure location manager for background tracking
+    private func configureBackgroundTracking() {
+        // Enable background location updates
+        locationManager.allowsBackgroundLocationUpdates = true
+        
+        // Don't pause updates automatically (critical for physical devices)
+        locationManager.pausesLocationUpdatesAutomatically = false
+        
+        // Show blue bar when tracking in background (optional, for transparency)
+        locationManager.showsBackgroundLocationIndicator = true
+        
+        print("🔋 Background location tracking configured")
+        print("   - allowsBackgroundLocationUpdates: true")
+        print("   - pausesLocationUpdatesAutomatically: false")
+    }
+    
+    /// Check if user has granted 'Always' permission
+    func checkAlwaysPermission() -> Bool {
+        let status = locationManager.authorizationStatus
+        
+        if status == .authorizedAlways {
+            print("✅ 'Always' permission: GRANTED")
+            return true
+        } else {
+            print("⚠️ 'Always' permission: NOT GRANTED")
+            print("   Current status: \(statusString(status))")
+            print("   Background tracking will NOT work when screen is locked!")
+            return false
+        }
+    }
+    
+    /// Convert authorization status to readable string
+    private func statusString(_ status: CLAuthorizationStatus) -> String {
+        switch status {
+        case .notDetermined: return "Not Determined"
+        case .restricted: return "Restricted"
+        case .denied: return "Denied"
+        case .authorizedAlways: return "Always"
+        case .authorizedWhenInUse: return "When In Use Only"
+        @unknown default: return "Unknown"
         }
     }
     
@@ -101,23 +164,32 @@ class NotificationManager: NSObject, ObservableObject {
     
     /// Check new report and trigger notification if within radius
     func checkNewReport(_ report: Report) {
+        print("🔔 Checking report: \(report.id)")
+        
         // Skip if already processed
         guard !processedReportIDs.contains(report.id) else {
+            print("   ⏭️ Already processed, skipping")
             return
         }
         
         // Calculate distance
         guard let distanceInMeters = calculateDistance(to: report) else {
+            print("   ⚠️ Could not calculate distance (no user location)")
             return
         }
         
+        let distanceInMiles = metersToMiles(distanceInMeters)
+        print("   📏 Distance: \(String(format: "%.1f", distanceInMiles)) miles (threshold: 5.0 miles)")
+        
         // Check if within 5 miles
         if distanceInMeters <= alertRadius {
-            let distanceInMiles = metersToMiles(distanceInMeters)
+            print("   ✅ Within range! Triggering notification...")
             triggerNotification(for: report, distance: distanceInMiles)
             
             // Mark as processed
             processedReportIDs.insert(report.id)
+        } else {
+            print("   ❌ Too far away, no notification")
         }
     }
     
@@ -146,8 +218,8 @@ class NotificationManager: NSObject, ObservableObject {
             "locationName": report.locationName
         ]
         
-        // Create trigger (immediate)
-        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 0.1, repeats: false)
+        // Create trigger (deliver after 1 second to ensure it shows even if app is in foreground)
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
         
         // Create request
         let request = UNNotificationRequest(
@@ -161,7 +233,7 @@ class NotificationManager: NSObject, ObservableObject {
             if let error = error {
                 print("❌ Notification error: \(error.localizedDescription)")
             } else {
-                print("✅ Notification sent: \(report.type) at \(String(format: "%.1f", distance)) miles")
+                print("✅ Notification scheduled successfully for: \(report.type) at \(String(format: "%.1f", distance)) miles")
             }
         }
     }
@@ -180,7 +252,7 @@ extension NotificationManager: CLLocationManagerDelegate {
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let location = locations.last else { return }
         
-        Task { @MainActor in
+        DispatchQueue.main.async {
             self.userLocation = location
             print("📍 User location updated: \(location.coordinate.latitude), \(location.coordinate.longitude)")
         }
@@ -193,12 +265,19 @@ extension NotificationManager: CLLocationManagerDelegate {
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         let status = manager.authorizationStatus
         
-        Task { @MainActor in
+        DispatchQueue.main.async {
             switch status {
-            case .authorizedAlways, .authorizedWhenInUse:
+            case .authorizedAlways:
+                self.isAuthorized = true
+                self.configureBackgroundTracking() // Enable background tracking
+                self.startLocationUpdates()
+                print("✅ Location authorized: Always (background tracking enabled)")
+            case .authorizedWhenInUse:
                 self.isAuthorized = true
                 self.startLocationUpdates()
-                print("✅ Location authorized: \(status == .authorizedAlways ? "Always" : "When In Use")")
+                print("⚠️ Location authorized: When In Use Only")
+                print("⚠️ Background notifications will NOT work!")
+                print("⚠️ Change to 'Always' in Settings for full functionality")
             case .denied, .restricted:
                 self.isAuthorized = false
                 print("❌ Location denied or restricted")
@@ -207,6 +286,37 @@ extension NotificationManager: CLLocationManagerDelegate {
             @unknown default:
                 break
             }
+            
+            // Check and log permission status
+            _ = self.checkAlwaysPermission()
         }
     }
 }
+// MARK: - UNUserNotificationCenterDelegate
+extension NotificationManager: UNUserNotificationCenterDelegate {
+    /// Called when notification is about to be presented while app is in foreground
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification,
+        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+    ) {
+        print("🔔 Presenting notification in foreground: \(notification.request.content.title)")
+        
+        // Show notification even when app is in foreground
+        completionHandler([.banner, .sound, .badge])
+    }
+    
+    /// Called when user taps on the notification
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
+        let userInfo = response.notification.request.content.userInfo
+        print("🔔 User tapped notification: \(userInfo)")
+        
+        // Handle notification tap (could navigate to specific report)
+        completionHandler()
+    }
+}
+

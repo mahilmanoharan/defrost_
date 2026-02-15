@@ -75,18 +75,57 @@ struct ReportDetailView: View {
     // MARK: - Image Section
     private var imageSection: some View {
         ZStack {
-            Rectangle()
-                .fill(steel.opacity(0.2))
-                .aspectRatio(1.0, contentMode: .fit)
-            
-            VStack(spacing: 8) {
-                Image(systemName: "photo")
-                    .font(.system(size: 50))
-                    .foregroundColor(steel)
+            if let imageURL = report.imageURL, let url = URL(string: imageURL) {
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case .empty:
+                        ZStack {
+                            Rectangle()
+                                .fill(steel.opacity(0.2))
+                                .aspectRatio(1.0, contentMode: .fit)
+                            
+                            ProgressView()
+                                .tint(crimson)
+                        }
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(maxWidth: .infinity)
+                    case .failure:
+                        ZStack {
+                            Rectangle()
+                                .fill(steel.opacity(0.2))
+                                .aspectRatio(1.0, contentMode: .fit)
+                            
+                            VStack(spacing: 8) {
+                                Image(systemName: "exclamationmark.triangle")
+                                    .font(.system(size: 50))
+                                    .foregroundColor(crimson)
+                                
+                                Text("IMAGE_LOAD_FAILED")
+                                    .font(.system(size: 10, weight: .bold, design: .monospaced))
+                                    .foregroundColor(steel)
+                            }
+                        }
+                    @unknown default:
+                        EmptyView()
+                    }
+                }
+            } else {
+                Rectangle()
+                    .fill(steel.opacity(0.2))
+                    .aspectRatio(1.0, contentMode: .fit)
                 
-                Text("NO_IMAGE_ATTACHED")
-                    .font(.system(size: 10, weight: .bold, design: .monospaced))
-                    .foregroundColor(steel)
+                VStack(spacing: 8) {
+                    Image(systemName: "photo")
+                        .font(.system(size: 50))
+                        .foregroundColor(steel)
+                    
+                    Text("NO_IMAGE_ATTACHED")
+                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        .foregroundColor(steel)
+                }
             }
         }
     }
@@ -183,7 +222,7 @@ struct ReportDetailView: View {
                     .foregroundColor(steel)
                     .tracking(1)
                 
-                Text(report.id.uuidString.uppercased())
+                Text(report.id.uppercased())
                     .font(.system(size: 9, design: .monospaced))
                     .foregroundColor(steel.opacity(0.6))
             }

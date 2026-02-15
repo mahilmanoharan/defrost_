@@ -15,6 +15,9 @@ struct InquiryView: View {
     // Location
     @StateObject private var locationManager = LocationManager()
     
+    // ViewModel
+    @EnvironmentObject var viewModel: ReportViewModel
+    
     @Environment(\.dismiss) private var dismiss
     
     // Callback for when submission is complete
@@ -242,8 +245,7 @@ struct InquiryView: View {
                 HStack {
                     Spacer()
                     SwipeToSubmit(onCommit: {
-                        dismiss()
-                        onSubmit()
+                        handleSubmit()
                     })
                     Spacer()
                 }
@@ -252,6 +254,41 @@ struct InquiryView: View {
         }
         .onAppear {
             locationManager.requestLocation()
+        }
+    }
+    
+    // MARK: - Handle Submit
+    private func handleSubmit() {
+        // Validate fields
+        guard viewModel.validateReport(
+            type: threatType,
+            locationName: locationName,
+            description: description
+        ) else {
+            return
+        }
+        
+        // Get location coordinates
+        guard let location = locationManager.location else {
+            viewModel.errorMessage = "Location not available. Please enable location services."
+            viewModel.showError = true
+            return
+        }
+        
+        // Submit to Firebase
+        Task {
+            await viewModel.submitReport(
+                type: threatType,
+                locationName: locationName,
+                latitude: location.coordinate.latitude,
+                longitude: location.coordinate.longitude,
+                description: description,
+                imageData: imageData
+            )
+            
+            // Dismiss and show confirmation
+            dismiss()
+            onSubmit()
         }
     }
     
@@ -354,4 +391,5 @@ struct InquiryView: View {
     InquiryView(onSubmit: {
         print("Report submitted")
     })
+    .environmentObject(ReportViewModel())
 }

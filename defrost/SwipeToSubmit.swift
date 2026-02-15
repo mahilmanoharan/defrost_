@@ -32,8 +32,8 @@ struct SwipeToSubmit: View {
                 Rectangle()
                     .fill(crimson)
                     .frame(
-                        width: fillEntireScreen ? UIScreen.main.bounds.width : UIScreen.main.bounds.width, 
-                        height: fillEntireScreen ? UIScreen.main.bounds.height : max(0, abs(dragOffset))
+                        width: 400, // Max width for screen
+                        height: fillEntireScreen ? 1000 : max(0, abs(dragOffset))
                     )
                     .animation(.easeOut(duration: 0.4), value: fillEntireScreen)
             }
@@ -114,7 +114,7 @@ struct SwipeToSubmit: View {
             
             // Continue handle movement upward from current position
             withAnimation(.easeOut(duration: 0.4)) {
-                dragOffset = -UIScreen.main.bounds.height
+                dragOffset = -1000 // Move off screen
             }
             
             // Fill entire screen with red

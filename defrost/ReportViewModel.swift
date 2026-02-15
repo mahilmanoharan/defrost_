@@ -15,6 +15,10 @@ class ReportViewModel: ObservableObject {
     
     // MARK: - Dependencies
     private let repository = ReportRepository()
+    private let notificationManager = NotificationManager.shared
+    
+    // Track previous report IDs to detect new reports
+    private var previousReportIDs: Set<String> = []
     
     // MARK: - Lifecycle
     
@@ -23,16 +27,59 @@ class ReportViewModel: ObservableObject {
         isLoading = true
         
         repository.startListening { [weak self] reports in
-            guard let self = self else { return }
-            self.reports = reports
-            self.isLoading = false
-            print("📱 UI updated with \(reports.count) reports")
+            Task { @MainActor in
+                guard let self = self else { return }
+                
+                // Detect new reports
+                self.detectAndNotifyNewReports(reports)
+                
+                // Update UI
+                self.reports = reports
+                self.isLoading = false
+                print("📱 UI updated with \(reports.count) reports")
+            }
         }
     }
     
     /// Stop listening when view disappears
     func stopListening() {
         repository.stopListening()
+    }
+    
+    // MARK: - Notification Logic
+    
+    /// Detect new reports and trigger notifications
+    private func detectAndNotifyNewReports(_ newReports: [Report]) {
+        let newReportIDs = Set(newReports.map { $0.id })
+        
+        // Find reports that weren't in the previous set
+        let addedReportIDs = newReportIDs.subtracting(previousReportIDs)
+        
+        // Filter to get the actual new Report objects
+        let newReportsAdded = newReports.filter { addedReportIDs.contains($0.id) }
+        
+        print("📊 Report update detected:")
+        print("   Total reports: \(newReports.count)")
+        print("   Previous reports: \(previousReportIDs.count)")
+        print("   New reports: \(newReportsAdded.count)")
+        
+        // Check each new report for proximity
+        for report in newReportsAdded {
+            print("   🔍 Checking new report: \(report.type) at \(report.locationName)")
+            notificationManager.checkNewReport(report)
+        }
+        
+        // Update tracking
+        previousReportIDs = newReportIDs
+        
+        if !newReportsAdded.isEmpty {
+            print("✅ Finished checking \(newReportsAdded.count) new report(s)")
+        }
+    }
+    
+    /// Request notification and location permissions
+    func requestNotificationPermissions() {
+        notificationManager.requestPermissions()
     }
     
     // MARK: - Submit Report

@@ -11,9 +11,19 @@ struct DashboardView: View {
     @State private var redBackgroundHeight: CGFloat = 0
     @State private var selectedReport: Report?
     @State private var showHelp: Bool = false
+    @State private var reportToDelete: Report? // For admin deletion
+    @State private var showDeleteConfirmation: Bool = false
     
-    // Mock user location (NYC area)
-    private let userLocation = CLLocation(latitude: 40.7128, longitude: -74.0060)
+    // ViewModel - connects to Firebase
+    @EnvironmentObject var viewModel: ReportViewModel
+    
+    // Get real user location from NotificationManager
+    @ObservedObject private var notificationManager = NotificationManager.shared
+    
+    // Fallback location (NYC area) if location not available yet
+    private var userLocation: CLLocation {
+        notificationManager.userLocation ?? CLLocation(latitude: 40.7128, longitude: -74.0060)
+    }
     
     // Filter states
     @State private var selectedSort: SortOption = .recency
@@ -75,12 +85,31 @@ struct DashboardView: View {
         }
         .fullScreenCover(isPresented: $showInquiry) {
             InquiryView(onSubmit: handleReportSubmission)
+                .environmentObject(viewModel)
         }
         .sheet(item: $selectedReport) { report in
             ReportDetailView(report: report)
         }
         .sheet(isPresented: $showHelp) {
             HelpView()
+        }
+        .alert("Delete Report", isPresented: $showDeleteConfirmation) {
+            Button("Cancel", role: .cancel) { }
+            Button("Delete", role: .destructive) {
+                if let report = reportToDelete {
+                    Task {
+                        await viewModel.deleteReport(report)
+                        reportToDelete = nil
+                    }
+                }
+            }
+        } message: {
+            Text("Are you sure you want to delete this report? This action cannot be undone.")
+        }
+        .alert("Error", isPresented: $viewModel.showError) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(viewModel.errorMessage ?? "An unknown error occurred")
         }
         .overlay(
             // Full red background after submission - comes from bottom up
@@ -100,6 +129,20 @@ struct DashboardView: View {
                 }
             }
         )
+        .onAppear {
+            viewModel.startListening()
+            viewModel.requestNotificationPermissions() // Request notification + location permissions
+            
+            // Debug: Log which location is being used
+            if notificationManager.userLocation != nil {
+                print("📍 Using real user location for distance calculations")
+            } else {
+                print("⚠️ Using fallback NYC location - waiting for real location")
+            }
+        }
+        .onDisappear {
+            viewModel.stopListening()
+        }
     }
     
     // MARK: - Header Component
@@ -150,9 +193,16 @@ struct DashboardView: View {
                         }
                     }
                 
-                Text("SYSTEM_SCANNING")
-                    .font(.system(size: 11, weight: .bold, design: .monospaced))
-                    .foregroundColor(crimson)
+                // Show location status
+                if notificationManager.userLocation != nil {
+                    Text("GPS_ACTIVE")
+                        .font(.system(size: 11, weight: .bold, design: .monospaced))
+                        .foregroundColor(crimson)
+                } else {
+                    Text("GPS_ACQUIRING")
+                        .font(.system(size: 11, weight: .bold, design: .monospaced))
+                        .foregroundColor(steel)
+                }
             }
         }
         .frame(maxWidth: .infinity)
@@ -237,20 +287,61 @@ struct DashboardView: View {
     // MARK: - Report Card Component (Instagram Style)
     private func reportCard(_ report: Report) -> some View {
         VStack(spacing: 0) {
-            // Image Placeholder
+            // Image from Firebase Storage or Placeholder
             ZStack {
-                Rectangle()
-                    .fill(steel.opacity(0.2))
-                    .aspectRatio(1.0, contentMode: .fit)
-                
-                VStack(spacing: 8) {
-                    Image(systemName: "photo")
-                        .font(.system(size: 40))
-                        .foregroundColor(steel)
+                if let imageURL = report.imageURL, let url = URL(string: imageURL) {
+                    AsyncImage(url: url) { phase in
+                        switch phase {
+                        case .empty:
+                            ZStack {
+                                Rectangle()
+                                    .fill(steel.opacity(0.2))
+                                    .aspectRatio(1.0, contentMode: .fit)
+                                
+                                ProgressView()
+                                    .tint(crimson)
+                            }
+                        case .success(let image):
+                            image
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                                .frame(maxWidth: .infinity)
+                                .aspectRatio(1.0, contentMode: .fit)
+                                .clipped()
+                        case .failure:
+                            ZStack {
+                                Rectangle()
+                                    .fill(steel.opacity(0.2))
+                                    .aspectRatio(1.0, contentMode: .fit)
+                                
+                                VStack(spacing: 8) {
+                                    Image(systemName: "exclamationmark.triangle")
+                                        .font(.system(size: 40))
+                                        .foregroundColor(crimson)
+                                    
+                                    Text("IMAGE_LOAD_FAILED")
+                                        .font(.system(size: 9, weight: .bold, design: .monospaced))
+                                        .foregroundColor(steel)
+                                }
+                            }
+                        @unknown default:
+                            EmptyView()
+                        }
+                    }
+                } else {
+                    Rectangle()
+                        .fill(steel.opacity(0.2))
+                        .aspectRatio(1.0, contentMode: .fit)
                     
-                    Text("NO_IMAGE")
-                        .font(.system(size: 9, weight: .bold, design: .monospaced))
-                        .foregroundColor(steel)
+                    VStack(spacing: 8) {
+                        Image(systemName: "photo")
+                            .font(.system(size: 40))
+                            .foregroundColor(steel)
+                        
+                        Text("NO_IMAGE")
+                            .font(.system(size: 9, weight: .bold, design: .monospaced))
+                            .foregroundColor(steel)
+                    }
                 }
             }
             
@@ -290,9 +381,18 @@ struct DashboardView: View {
                             .font(.system(size: 10))
                             .foregroundColor(steel)
                         
+                        // Show distance with better debugging
                         Text(report.formattedDistance(from: userLocation))
                             .font(.system(size: 11, design: .monospaced))
                             .foregroundColor(steel)
+                            .onAppear {
+                                // Debug log to verify calculation
+                                let dist = report.distance(from: userLocation)
+                                print("📏 Distance calculation:")
+                                print("   User: \(userLocation.coordinate.latitude), \(userLocation.coordinate.longitude)")
+                                print("   Report: \(report.latitude), \(report.longitude)")
+                                print("   Distance: \(dist) meters = \(dist / 1609.34) miles")
+                            }
                     }
                     
                     Spacer()
@@ -317,6 +417,15 @@ struct DashboardView: View {
             Rectangle()
                 .stroke(steel, lineWidth: 0.5)
         )
+        .onLongPressGesture(minimumDuration: 3.0) {
+            // Admin mode: Long press to delete
+            reportToDelete = report
+            showDeleteConfirmation = true
+            
+            // Haptic feedback
+            let generator = UINotificationFeedbackGenerator()
+            generator.notificationOccurred(.warning)
+        }
     }
     
     // MARK: - Date Formatter
@@ -449,7 +558,7 @@ struct DashboardView: View {
     private func handleReportSubmission() {
         // Animate red background from bottom to top immediately
         withAnimation(.easeOut(duration: 0.35)) {
-            redBackgroundHeight = UIScreen.main.bounds.height
+            redBackgroundHeight = 1000 // Large enough to cover screen
         }
         
         // Dismiss the inquiry view almost immediately so red shows through
@@ -467,7 +576,7 @@ struct DashboardView: View {
     
     // MARK: - Filtered Reports
     private var filteredReports: [Report] {
-        var reports = Report.mockArray
+        var reports = viewModel.reports // Use Firebase data instead of mock
         
         // Filter by threat type
         if selectedThreatType != .all {
@@ -517,4 +626,5 @@ extension Color {
 // MARK: - Preview
 #Preview {
     DashboardView()
+        .environmentObject(ReportViewModel())
 }

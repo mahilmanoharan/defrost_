@@ -1,27 +1,29 @@
 import Foundation
 import CoreLocation
+import FirebaseFirestore
 
 /// DEFROST Report Model - Shell Data Structure
 /// Represents a single investigative report entry in the Urban Noir 2.0 system
 struct Report: Identifiable, Codable {
-    let id: UUID
+    @DocumentID var firestoreID: String? // Firestore auto-generated ID
+    let id: String // UUID as String for Firestore compatibility
     let timestamp: Date
     let type: String
     let locationName: String
     let latitude: Double
     let longitude: Double
     let description: String
-    let imageName: String? // Optional image name
+    let imageURL: String? // Firebase Storage URL
     
     init(
-        id: UUID = UUID(),
+        id: String = UUID().uuidString,
         timestamp: Date,
         type: String,
         locationName: String,
         latitude: Double,
         longitude: Double,
         description: String,
-        imageName: String? = nil
+        imageURL: String? = nil
     ) {
         self.id = id
         self.timestamp = timestamp
@@ -30,7 +32,7 @@ struct Report: Identifiable, Codable {
         self.latitude = latitude
         self.longitude = longitude
         self.description = description
-        self.imageName = imageName
+        self.imageURL = imageURL
     }
     
     // Calculate distance from user location
@@ -69,7 +71,7 @@ struct Report: Identifiable, Codable {
     }
 }
 
-// MARK: - Mock Data Extension
+// MARK: - Mock Data Extension (for previews only)
 extension Report {
     static let mockArray: [Report] = [
         Report(
@@ -79,7 +81,7 @@ extension Report {
             latitude: 40.7580,
             longitude: -73.9855,
             description: "Mobile checkpoint set up near subway entrance. 3 vehicles, approximately 6-8 officers. Checking IDs and documents.",
-            imageName: nil
+            imageURL: nil
         ),
         Report(
             timestamp: Date().addingTimeInterval(-3600 * 5),
@@ -88,7 +90,7 @@ extension Report {
             latitude: 40.8448,
             longitude: -73.9242,
             description: "Marked vehicles patrolling residential area. Multiple stops observed over 30 minute period.",
-            imageName: nil
+            imageURL: nil
         ),
         Report(
             timestamp: Date().addingTimeInterval(-86400 * 1),
@@ -97,7 +99,7 @@ extension Report {
             latitude: 40.6431,
             longitude: -74.0134,
             description: "Early morning operation at apartment building. Multiple units present. Building surrounded.",
-            imageName: nil
+            imageURL: nil
         ),
         Report(
             timestamp: Date().addingTimeInterval(-86400 * 2),
@@ -106,7 +108,7 @@ extension Report {
             latitude: 40.7465,
             longitude: -73.8917,
             description: "Checkpoint near commercial district. Heavy activity during rush hour.",
-            imageName: nil
+            imageURL: nil
         ),
         Report(
             timestamp: Date().addingTimeInterval(-86400 * 3),
@@ -115,7 +117,7 @@ extension Report {
             latitude: 40.8518,
             longitude: -73.9352,
             description: "Increased patrol presence in neighborhood. Multiple units spotted throughout the day.",
-            imageName: nil
+            imageURL: nil
         ),
         Report(
             timestamp: Date().addingTimeInterval(-86400 * 5),
@@ -124,7 +126,7 @@ extension Report {
             latitude: 40.6436,
             longitude: -74.0732,
             description: "Checkpoint at terminal entrance. All passengers being screened before boarding.",
-            imageName: nil
+            imageURL: nil
         )
     ]
 }
