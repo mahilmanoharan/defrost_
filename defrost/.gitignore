@@ -1,0 +1,64 @@
+# Firebase Config - NEVER commit this!
+GoogleService-Info.plist
+
+# Xcode
+xcuserdata/
+*.xcworkspace
+*.xcuserstate
+DerivedData/
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+build/
+*.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+!default.pbxuser
+!default.mode1v3
+!default.mode2v3
+!default.perspectivev3
+
+# Swift Package Manager
+.swiftpm/
+.build/
+Packages/
+Package.resolved
+
+# CocoaPods
+Pods/
+Podfile.lock
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+
+# Secrets & Environment
+Secrets.swift
+*.secret
+.env
+*.env
+config.json
+
+# Fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots
+fastlane/test_output
+
+# Code coverage
+*.gcov
+*.gcda
+*.gcno
+coverage/
+
+# Backup files
+*~
+*.swp
+*.bak
+*.tmp
+*.orig
