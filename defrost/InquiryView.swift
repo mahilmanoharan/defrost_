@@ -275,8 +275,8 @@ struct InquiryView: View {
             
             Spacer()
             
-            // Spacer for symmetry
-            Color.clear
+            // Empty space for symmetry
+            Spacer()
                 .frame(width: 44, height: 44)
         }
         .padding(.horizontal, 16)
@@ -320,7 +320,6 @@ struct InquiryView: View {
                 Rectangle()
                     .stroke(steel, lineWidth: 0.5)
             )
-            .cornerRadius(0)
         }
     }
 }

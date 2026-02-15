@@ -15,12 +15,32 @@ class LocationManager: NSObject, ObservableObject {
         super.init()
         locationManager.delegate = self
         locationManager.desiredAccuracy = kCLLocationAccuracyBest
-        checkAuthorization()
+        
+        // Check initial authorization status
+        DispatchQueue.main.async {
+            self.checkAuthorization()
+        }
     }
     
     func requestLocation() {
-        locationManager.requestWhenInUseAuthorization()
-        locationManager.requestLocation()
+        // First check current status
+        let status = locationManager.authorizationStatus
+        
+        print("📍 Current location status: \(status.rawValue)")
+        
+        switch status {
+        case .notDetermined:
+            print("📍 Requesting when in use authorization")
+            locationManager.requestWhenInUseAuthorization()
+        case .authorizedWhenInUse, .authorizedAlways:
+            print("📍 Already authorized, requesting location")
+            locationManager.requestLocation()
+        case .denied, .restricted:
+            print("📍 Location access denied or restricted")
+            isAuthorized = false
+        @unknown default:
+            print("📍 Unknown authorization status")
+        }
     }
     
     func startUpdating() {
@@ -32,18 +52,23 @@ class LocationManager: NSObject, ObservableObject {
     }
     
     private func checkAuthorization() {
-        switch locationManager.authorizationStatus {
+        let status = locationManager.authorizationStatus
+        authorizationStatus = status
+        
+        switch status {
         case .authorizedWhenInUse, .authorizedAlways:
             isAuthorized = true
+            print("📍 Location authorized, requesting location")
             locationManager.requestLocation()
         case .notDetermined:
             isAuthorized = false
+            print("📍 Location permission not determined")
         case .denied, .restricted:
             isAuthorized = false
+            print("📍 Location permission denied or restricted")
         @unknown default:
             isAuthorized = false
         }
-        authorizationStatus = locationManager.authorizationStatus
     }
 }
 
@@ -51,14 +76,20 @@ class LocationManager: NSObject, ObservableObject {
 extension LocationManager: CLLocationManagerDelegate {
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let location = locations.last else { return }
-        self.location = location
+        print("📍 Location updated: \(location.coordinate.latitude), \(location.coordinate.longitude)")
+        DispatchQueue.main.async {
+            self.location = location
+        }
     }
     
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        print("Location error: \(error.localizedDescription)")
+        print("📍 Location error: \(error.localizedDescription)")
     }
     
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
-        checkAuthorization()
+        print("📍 Authorization changed to: \(manager.authorizationStatus.rawValue)")
+        DispatchQueue.main.async {
+            self.checkAuthorization()
+        }
     }
 }
