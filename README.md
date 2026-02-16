@@ -17,7 +17,7 @@ DEFROST lets people anonymously report and view ICE checkpoints, patrols, and ra
 
 1. Clone the repo
 2. Open `defrost.xcodeproj` in Xcode
-3. Add your own `GoogleService-Info.plist` from Firebase (not included for security)
+3. Firebase Setup
 4. Build and run
 
 ## Firebase Setup
@@ -26,7 +26,7 @@ You'll need to:
 - Create a Firebase project
 - Enable Firestore and Storage
 - Download your `GoogleService-Info.plist`
-- Add security rules (see `FIREBASE_SETUP_GUIDE.md`)
+- Add security rules 
 
 ## Usage
 
@@ -45,7 +45,7 @@ You'll need to:
 ## Notes
 
 - Location permission must be set to "Always" for background tracking
-- Notifications work best when app is open (working on push notifications)
+- Notifications work best when app is open 
 - All reports are anonymous - no user data is stored
 
 ## Privacy
